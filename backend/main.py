@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -9,6 +12,8 @@ from database import Base, engine, get_db
 from seed import seed_if_empty
 
 app = FastAPI(title="Farm Management API", version="1.0.0")
+
+BASE_DIR = Path(__file__).resolve().parent
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +37,14 @@ def on_startup():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+    dashboard_path = BASE_DIR / "web" / "index.html"
+    if dashboard_path.exists():
+        return dashboard_path.read_text(encoding="utf-8")
+    return "<h1>Farm Platform API</h1><p>Open <a href='/docs'>/docs</a></p>"
 
 
 @app.post("/fields", response_model=schemas.FieldRead)
@@ -169,3 +182,9 @@ def dashboard_summary(db: Session = Depends(get_db)):
         total_tasks=total_tasks,
         open_tasks=open_tasks,
     )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

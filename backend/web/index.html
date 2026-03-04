@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Farm Platform V1</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f7f4; color: #1f2937; }
+    header { background: #166534; color: #fff; padding: 16px 20px; }
+    main { padding: 20px; max-width: 1000px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .card { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .label { font-size: 12px; color: #6b7280; }
+    .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+    h2 { margin-top: 24px; }
+    .muted { color: #6b7280; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🚜 Farm Platform V1</h1>
+    <div class="muted">Dashboard temps réel - Eau, Électricité, Prix, Plantes, Tâches</div>
+  </header>
+
+  <main>
+    <div class="grid" id="summary"></div>
+
+    <h2>Prix marchandises</h2>
+    <table>
+      <thead><tr><th>Date</th><th>Produit</th><th>Marché</th><th>Prix</th><th>Unité</th></tr></thead>
+      <tbody id="prices"></tbody>
+    </table>
+
+    <h2>Tâches de ferme</h2>
+    <table>
+      <thead><tr><th>Titre</th><th>Catégorie</th><th>Statut</th><th>Échéance</th></tr></thead>
+      <tbody id="tasks"></tbody>
+    </table>
+  </main>
+
+  <script>
+    const fmt = (n) => new Intl.NumberFormat('fr-FR').format(n ?? 0);
+
+    async function loadSummary() {
+      const res = await fetch('/dashboard/summary');
+      const data = await res.json();
+      const cards = [
+        ['Parcelles', data.total_fields],
+        ['Surface (ha)', data.total_area_ha],
+        ['Cultures actives', data.active_crops],
+        ['Prix moyen', data.avg_commodity_price + ' €'],
+        ['Eau (L)', fmt(data.total_water_liters)],
+        ['Énergie générée (kWh)', data.total_kwh_generated],
+        ['Énergie consommée (kWh)', data.total_kwh_consumed],
+        ['Balance énergie', data.energy_balance_kwh],
+        ['Tâches ouvertes', data.open_tasks + '/' + data.total_tasks],
+      ];
+
+      const html = cards.map(([label, value]) => `
+        <div class="card">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+        </div>
+      `).join('');
+      document.getElementById('summary').innerHTML = html;
+    }
+
+    async function loadPrices() {
+      const res = await fetch('/commodity-prices');
+      const rows = await res.json();
+      document.getElementById('prices').innerHTML = rows.slice(0, 10).map(r => `
+        <tr>
+          <td>${r.price_date}</td>
+          <td>${r.commodity}</td>
+          <td>${r.market}</td>
+          <td>${r.price}</td>
+          <td>${r.unit}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadTasks() {
+      const res = await fetch('/tasks');
+      const rows = await res.json();
+      document.getElementById('tasks').innerHTML = rows.slice(0, 10).map(r => `
+        <tr>
+          <td>${r.title}</td>
+          <td>${r.category}</td>
+          <td>${r.status}</td>
+          <td>${r.due_date ?? '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    Promise.all([loadSummary(), loadPrices(), loadTasks()]);
+  </script>
+</body>
+</html>
